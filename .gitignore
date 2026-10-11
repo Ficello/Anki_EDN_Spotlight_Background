@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+meta.json
+*.log
+*.db
+user_files/cache/
+user_files/favorites/
+user_files/current_background.jpg
+user_files/spotlight.json
+.vscode/
+.idea/

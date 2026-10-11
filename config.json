@@ -1,0 +1,22 @@
+{
+    "enabled_themes": [
+        "nasa_hubble",
+        "maps",
+        "geography",
+        "marine_animals",
+        "land_animals"
+    ],
+    "session_mode": "launch",
+    "favorites_ratio": 0.5,
+    "opacity_main": 0.9,
+    "opacity_reviewer": 0.85,
+    "reviewer_image": true,
+    "toolbar_image": true,
+    "blur_radius": 0,
+    "background_position": "center",
+    "background_size": "cover",
+    "show_deckbrowser_bar": true,
+    "max_cached_images": 5,
+    "adapt_screen_resolution": true,
+    "custom_flickr_sources": []
+}
