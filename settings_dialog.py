@@ -60,6 +60,12 @@ class SpotlightSettingsDialog(QDialog):
         main_layout.setSpacing(12)
         main_layout.setContentsMargins(16, 16, 16, 16)
 
+        self.chk_enabled = QCheckBox("Activer l'arrière-plan Spotlight")
+        font_enabled = self.chk_enabled.font()
+        font_enabled.setBold(True)
+        self.chk_enabled.setFont(font_enabled)
+        main_layout.addWidget(self.chk_enabled)
+
         self.tabs = QTabWidget()
 
         # Onglet 1 : Thèmes d'images
@@ -185,13 +191,24 @@ class SpotlightSettingsDialog(QDialog):
         self.lbl_storage_stats = QLabel()
         fav_inner.addWidget(self.lbl_storage_stats)
 
+        lbl_user_hint = QLabel(
+            "Vous pouvez déposer vos propres images (.jpg, .png, .webp) directement dans le dossier des favoris "
+            "ou utiliser le bouton ci-dessous pour les ajouter à votre rotation."
+        )
+        lbl_user_hint.setWordWrap(True)
+        lbl_user_hint.setStyleSheet("font-size: 11px; color: gray;")
+        fav_inner.addWidget(lbl_user_hint)
+
         btn_box = QHBoxLayout()
         btn_open_favs = QPushButton("Ouvrir le dossier des favoris")
-        btn_open_favs.clicked.connect(lambda: openFolder(self.db.favorites_dir))
+        btn_open_favs.clicked.connect(self._on_open_favs)
+        btn_add_favs = QPushButton("Ajouter des photos...")
+        btn_add_favs.clicked.connect(self._on_add_photos)
         btn_clean_cache = QPushButton("Vider le cache temporaire")
         btn_clean_cache.clicked.connect(self._on_clean_cache)
 
         btn_box.addWidget(btn_open_favs)
+        btn_box.addWidget(btn_add_favs)
         btn_box.addWidget(btn_clean_cache)
         fav_inner.addLayout(btn_box)
 
@@ -355,7 +372,44 @@ class SpotlightSettingsDialog(QDialog):
         self._update_storage_label()
         showInfo("Le cache temporaire des photos a été vidé.", parent=self)
 
+    def _on_open_favs(self) -> None:
+        self.db.sync_favorites_folder()
+        openFolder(self.db.favorites_dir)
+        self._update_storage_label()
+
+    def _on_add_photos(self) -> None:
+        from aqt.qt import QFileDialog
+        import shutil
+        import time
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Sélectionner des photos à ajouter à vos favoris",
+            "",
+            "Images (*.jpg *.jpeg *.png *.webp)"
+        )
+        if not files:
+            return
+        added = 0
+        for src_path in files:
+            if os.path.isfile(src_path):
+                fname = os.path.basename(src_path)
+                dest_path = os.path.join(self.db.favorites_dir, fname)
+                if os.path.exists(dest_path) and os.path.abspath(src_path).lower() != os.path.abspath(dest_path).lower():
+                    base, ext = os.path.splitext(fname)
+                    dest_path = os.path.join(self.db.favorites_dir, f"{base}_{int(time.time())}{ext}")
+                try:
+                    if os.path.abspath(src_path).lower() != os.path.abspath(dest_path).lower():
+                        shutil.copy2(src_path, dest_path)
+                    added += 1
+                except Exception:
+                    pass
+        self.db.sync_favorites_folder()
+        self._update_storage_label()
+        if added > 0:
+            showInfo(f"{added} photo(s) ajoutée(s) avec succès à votre collection de favoris.", parent=self)
+
     def load_values(self) -> None:
+        self.chk_enabled.setChecked(self.config.get("enabled", True))
         themes = self.config.get("enabled_themes", [])
         for key, chk in self.all_built_in_checks:
             chk.setChecked(key in themes)
@@ -405,6 +459,7 @@ class SpotlightSettingsDialog(QDialog):
         if not themes:
             themes = ["nasa_hubble", "geography"]
 
+        self.config["enabled"] = self.chk_enabled.isChecked()
         self.config["enabled_themes"] = themes
         self.config["custom_flickr_sources"] = self.custom_flickr_list
         self.config["adapt_screen_resolution"] = self.chk_adapt_res.isChecked()

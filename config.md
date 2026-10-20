@@ -25,11 +25,12 @@ Ce module offre une expérience inspirée de Windows Spotlight ("À la une"), av
    - Détection automatique et dynamique de la résolution physique de votre moniteur (Full HD 1080p, 2K/QHD 1440p, 4K/UHD ou écrans Retina HiDPI).
    - Téléchargement des versions calibrées pour un rendu net sans surconsommation de bande passante ni pixellisation.
 
-4. **Système "J'aime / Ne pas aimer" (Windows Spotlight)** :
+4. **Système "J'aime / Ne pas aimer" & Collection personnelle** :
    - **J'aime cette photo** (`Ctrl+J`) : La photo est téléchargée et conservée définitivement dans vos favoris locaux (`user_files/favorites/`). Elle réapparaîtra régulièrement dans le roulement.
    - **Je n'aime pas cette photo** (`Ctrl+K`) : La photo est supprimée et inscrite sur liste noire. Elle ne sera plus jamais affichée.
    - **Photo suivante** (`Ctrl+;`) : Permet de passer manuellement à une autre photo.
-   - **Détails de la photo** : Affiche le titre de l'œuvre ou de la prise de vue, sa source et son lien d'origine.
+   - **Dossier favoris & Ajout de photos personnelles** : Accédez directement au dossier de vos photos favorites via le bouton sur l'accueil, le menu Arrière-plan ou les Réglages. Déposez-y vos propres fichiers (.jpg, .png, .webp) ou utilisez l'option "Ajouter des photos aux favoris..." : elles sont automatiquement détectées, indexées et intégrées au roulement.
+   - **Bouton Activer / Désactiver** : Activez ou désactivez l'arrière-plan en 1 clic directement depuis la carte d'accueil, le menu Arrière-plan ou la fenêtre de réglages.
 
 5. **Performance et autonomie** :
    - Téléchargement discret en tâche de fond (aucun ralentissement au démarrage d'Anki).

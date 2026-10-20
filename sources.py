@@ -23,6 +23,7 @@ THEME_LABELS = {
     "social_movements": "Mouvements sociaux & Histoire des luttes",
     "botanical": "Botanique & Flore macro",
     "microscopy": "Microscopie & Monde miniature",
+    "custom_personal": "Collection personnelle",
 }
 
 WIKI_QUERIES = {

@@ -1,4 +1,5 @@
 {
+    "enabled": true,
     "enabled_themes": [
         "nasa_hubble",
         "maps",

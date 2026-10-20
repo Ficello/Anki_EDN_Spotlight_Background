@@ -76,6 +76,9 @@ class CSSEngine:
             return ""
 
         conf = self.get_config()
+        if not conf.get("enabled", True):
+            return "body::before { display: none !important; }"
+
         if is_reviewer and not conf.get("reviewer_image", True):
             return "body::before { display: none !important; }"
 
@@ -144,7 +147,6 @@ html {{
 body {{
     position: relative !important;
     isolation: isolate !important;
-    min-height: 100vh !important;
     background: transparent !important;
     background-color: transparent !important;
     opacity: 1 !important;

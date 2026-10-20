@@ -31,6 +31,7 @@ if mw and getattr(mw, "addonManager", None):
 
 def get_config() -> Dict[str, Any]:
     default_conf = {
+        "enabled": True,
         "enabled_themes": [
             "nasa_hubble",
             "maps",
@@ -123,6 +124,9 @@ def apply_image(metadata: Dict[str, Any], refresh: bool = True) -> None:
 def rotate_to_next(force_discovery: bool = False, notify: bool = False) -> None:
     """Bascule vers une nouvelle image (favori ou nouvelle découverte)."""
     conf = get_config()
+    if not conf.get("enabled", True):
+        return
+
     ratio = float(conf.get("favorites_ratio", 0.5))
     current_id = db.current.get("id") if db.current else None
 
@@ -176,6 +180,75 @@ def on_action_next() -> None:
     rotate_to_next(force_discovery=False, notify=True)
 
 
+def on_toggle_enabled(new_state: Optional[bool] = None) -> None:
+    """Active ou désactive l'arrière-plan Spotlight."""
+    conf = get_config()
+    current_enabled = conf.get("enabled", True)
+    target = not current_enabled if new_state is None else bool(new_state)
+    conf["enabled"] = target
+    save_config(conf)
+
+    global rotation_timer
+    if target:
+        if not db.current:
+            rotate_to_next(force_discovery=False, notify=False)
+        elif db.current.get("local_path") and os.path.exists(db.current["local_path"]):
+            css_engine.update_current_image(db.current["local_path"])
+        else:
+            rotate_to_next(force_discovery=False, notify=False)
+        setup_rotation_timer()
+        prefetcher.trigger_prefetch()
+        tooltip("Arrière-plan activé.")
+    else:
+        if rotation_timer is not None:
+            rotation_timer.stop()
+            rotation_timer = None
+        tooltip("Arrière-plan désactivé.")
+
+    refresh_anki_views()
+    ui.setup_menubar()
+
+
+def on_open_favorites_folder() -> None:
+    """Ouvre le dossier des favoris dans l'explorateur et synchronise les photos."""
+    from aqt.utils import openFolder
+    db.sync_favorites_folder()
+    openFolder(db.favorites_dir)
+
+
+def on_add_photos() -> None:
+    """Permet de sélectionner des photos depuis le disque pour les ajouter directement aux favoris."""
+    from aqt.qt import QFileDialog
+    import shutil
+    import time
+    files, _ = QFileDialog.getOpenFileNames(
+        mw,
+        "Sélectionner des photos à ajouter à vos favoris",
+        "",
+        "Images (*.jpg *.jpeg *.png *.webp)"
+    )
+    if not files:
+        return
+    added = 0
+    for src_path in files:
+        if os.path.isfile(src_path):
+            fname = os.path.basename(src_path)
+            dest_path = os.path.join(db.favorites_dir, fname)
+            if os.path.exists(dest_path) and os.path.abspath(src_path).lower() != os.path.abspath(dest_path).lower():
+                base, ext = os.path.splitext(fname)
+                dest_path = os.path.join(db.favorites_dir, f"{base}_{int(time.time())}{ext}")
+            try:
+                if os.path.abspath(src_path).lower() != os.path.abspath(dest_path).lower():
+                    shutil.copy2(src_path, dest_path)
+                added += 1
+            except Exception:
+                pass
+    db.sync_favorites_folder()
+    if added > 0:
+        tooltip(f"{added} photo(s) personnelle(s) ajoutée(s) aux favoris.")
+        refresh_anki_views()
+
+
 # Timer de rotation automatique
 rotation_timer: Optional[QTimer] = None
 
@@ -188,6 +261,9 @@ def setup_rotation_timer() -> None:
         rotation_timer = None
 
     conf = get_config()
+    if not conf.get("enabled", True):
+        return
+
     session_mode = conf.get("session_mode", "launch")
 
     interval_ms = 0
@@ -206,13 +282,18 @@ def on_open_settings() -> None:
     """Ouvre la boîte de dialogue de réglages."""
     def on_save(new_conf: Dict[str, Any]) -> None:
         save_config(new_conf)
-        # Réappliquer le CSS avec les nouveaux paramètres d'opacité/flou
-        if db.current and db.current.get("local_path"):
-            css_engine.update_current_image(db.current["local_path"])
+        global rotation_timer
+        if new_conf.get("enabled", True):
+            if db.current and db.current.get("local_path"):
+                css_engine.update_current_image(db.current["local_path"])
+            setup_rotation_timer()
+            prefetcher.trigger_prefetch()
+        else:
+            if rotation_timer is not None:
+                rotation_timer.stop()
+                rotation_timer = None
         refresh_anki_views()
-        prefetcher.trigger_prefetch()
-        # Mettre à jour le timer avec le nouveau mode de rotation
-        setup_rotation_timer()
+        ui.setup_menubar()
 
     from . import settings_dialog
     import importlib
@@ -229,6 +310,9 @@ ui = SpotlightUI(
     on_dislike=on_action_dislike,
     on_next=on_action_next,
     on_open_settings=on_open_settings,
+    on_toggle_enabled=on_toggle_enabled,
+    on_open_favorites_folder=on_open_favorites_folder,
+    on_add_photos=on_add_photos,
 )
 
 
@@ -252,27 +336,27 @@ def _on_web_load_finished(ok: bool) -> None:
 
 def on_profile_did_open() -> None:
     """Déclenché à l'ouverture du profil Anki."""
+    db.sync_favorites_folder()
     ui.setup_menubar()
 
     conf = get_config()
+    is_enabled = conf.get("enabled", True)
     session_mode = conf.get("session_mode", "launch")
 
-    # Si aucune image n'est définie ou si le mode session est 'launch', on fait tourner
-    if not db.current or session_mode == "launch":
-        rotate_to_next(force_discovery=False, notify=False)
-    elif db.current and db.current.get("local_path") and os.path.exists(db.current["local_path"]):
-        css_engine.update_current_image(db.current["local_path"])
+    if is_enabled:
+        if not db.current or session_mode == "launch":
+            rotate_to_next(force_discovery=False, notify=False)
+        elif db.current and db.current.get("local_path") and os.path.exists(db.current["local_path"]):
+            css_engine.update_current_image(db.current["local_path"])
+        else:
+            rotate_to_next(force_discovery=False, notify=False)
+        setup_rotation_timer()
+        prefetcher.trigger_prefetch()
     else:
-        rotate_to_next(force_discovery=False, notify=False)
+        css_engine.update_all_views()
 
     # Nettoyer le cache au démarrage selon le quota configuré
     db.cleanup_old_cache(keep_count=int(conf.get("max_cached_images", 5)))
-
-    # Déclencher le préchargement
-    prefetcher.trigger_prefetch()
-
-    # Démarrer le timer périodique si sélectionné
-    setup_rotation_timer()
 
     # Connecter la notification de fin de chargement du webview principal
     global _web_load_connected

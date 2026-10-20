@@ -124,6 +124,9 @@ class SpotlightUI:
         on_dislike: Callable[[], None],
         on_next: Callable[[], None],
         on_open_settings: Callable[[], None],
+        on_toggle_enabled: Callable[[], None],
+        on_open_favorites_folder: Callable[[], None],
+        on_add_photos: Callable[[], None],
     ):
         self.db = db
         self.get_config = get_config
@@ -131,6 +134,9 @@ class SpotlightUI:
         self.on_dislike = on_dislike
         self.on_next = on_next
         self.on_open_settings = on_open_settings
+        self.on_toggle_enabled = on_toggle_enabled
+        self.on_open_favorites_folder = on_open_favorites_folder
+        self.on_add_photos = on_add_photos
 
     def setup_menubar(self) -> None:
         """Crée le menu supérieur 'Arrière-plan' dans Anki."""
@@ -147,6 +153,16 @@ class SpotlightUI:
             menu = menubar.addMenu(menu_name)
         else:
             menu.clear()
+
+        # Action : Activer / Désactiver
+        is_enabled = self.get_config().get("enabled", True)
+        act_enabled = QAction("Arrière-plan activé", mw)
+        act_enabled.setCheckable(True)
+        act_enabled.setChecked(is_enabled)
+        act_enabled.triggered.connect(self.on_toggle_enabled)
+        menu.addAction(act_enabled)
+
+        menu.addSeparator()
 
         # Action : J'aime
         act_like = QAction("J'aime cette photo (Garder en favori)", mw)
@@ -174,10 +190,14 @@ class SpotlightUI:
         menu.addAction(act_info)
 
         # Action : Ouvrir le dossier favoris
-        from aqt.utils import openFolder
-        act_folder = QAction("Ouvrir le dossier des favoris", mw)
-        act_folder.triggered.connect(lambda: openFolder(self.db.favorites_dir))
+        act_folder = QAction("Ouvrir le dossier des photos favorites (Ajouter les vôtres)", mw)
+        act_folder.triggered.connect(self.on_open_favorites_folder)
         menu.addAction(act_folder)
+
+        # Action : Ajouter des photos directement
+        act_add = QAction("Ajouter des photos aux favoris...", mw)
+        act_add.triggered.connect(self.on_add_photos)
+        menu.addAction(act_add)
 
         menu.addSeparator()
 
@@ -199,6 +219,137 @@ class SpotlightUI:
         conf = self.get_config()
         if not conf.get("show_deckbrowser_bar", True):
             return content_tree
+
+        if not conf.get("enabled", True):
+            toolbar_html = f"""
+<style>
+#spotlight-deck-container {{
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 24px auto 16px auto;
+  box-sizing: border-box;
+  isolation: isolate;
+}}
+
+#spotlight-deck-card {{
+  width: 100%;
+  max-width: 580px;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.90);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  color: var(--fg, #222);
+}}
+
+:root[class*="night_mode"] #spotlight-deck-card,
+:root.night-mode #spotlight-deck-card,
+body.night_mode #spotlight-deck-card,
+body.nightMode #spotlight-deck-card {{
+  background: rgba(34, 34, 34, 0.90);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  color: var(--fg, #e0e0e0);
+}}
+
+.spotlight-card-header-line {{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}}
+
+.spotlight-card-label {{
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  opacity: 0.6;
+  text-transform: uppercase;
+}}
+
+.spotlight-card-status-badge {{
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(128, 128, 128, 0.18);
+  color: var(--fg, #444);
+}}
+
+.spotlight-card-actions {{
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}}
+
+.spotlight-card-btn {{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle, rgba(128, 128, 128, 0.25));
+  background: var(--button-bg, rgba(255, 255, 255, 0.7));
+  color: var(--fg, #222);
+  box-sizing: border-box;
+}}
+
+:root[class*="night_mode"] .spotlight-card-btn,
+:root.night-mode .spotlight-card-btn,
+body.night_mode .spotlight-card-btn,
+body.nightMode .spotlight-card-btn {{
+  background: var(--button-bg, rgba(50, 50, 50, 0.75));
+  border-color: var(--border-subtle, rgba(255, 255, 255, 0.2));
+  color: var(--fg, #eee);
+}}
+
+.spotlight-card-btn:hover {{
+  background: var(--button-gradient-start, #fff);
+  border-color: var(--button-hover-border, #999);
+}}
+
+:root[class*="night_mode"] .spotlight-card-btn:hover,
+:root.night-mode .spotlight-card-btn:hover,
+body.night_mode .spotlight-card-btn:hover,
+body.nightMode .spotlight-card-btn:hover {{
+  background: var(--button-gradient-start, #383838);
+  border-color: rgba(255, 255, 255, 0.35);
+}}
+</style>
+
+<div id="spotlight-deck-container">
+  <div id="spotlight-deck-card">
+    <div class="spotlight-card-header-line">
+      <span class="spotlight-card-label">Arriere-plan</span>
+      <span class="spotlight-card-status-badge">Desactive</span>
+    </div>
+    <div style="font-size: 11.5px; opacity: 0.8; margin-top: 2px;">
+      L'arriere-plan Spotlight est desactive.
+    </div>
+    <div class="spotlight-card-actions">
+      <button class="spotlight-card-btn" onclick="pycmd('spotlight:open_folder')" title="Ouvrir le dossier des photos favorites pour gerer vos photos">
+        <span>Dossier favoris</span>
+      </button>
+      <button class="spotlight-card-btn" onclick="pycmd('spotlight:toggle_enabled')" title="Reactiver l'arriere-plan Spotlight">
+        <span>Activer</span>
+      </button>
+    </div>
+  </div>
+</div>
+"""
+            return f"{content_tree}\n{toolbar_html}"
 
         if not self.db.current:
             return content_tree
@@ -486,6 +637,7 @@ body.nightMode .spotlight-more-link {{
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 4px;
 }}
@@ -576,6 +728,12 @@ body.nightMode .spotlight-card-btn:hover {{
         <span>Suivante</span>
         <span class="spotlight-shortcut-badge">Ctrl+;</span>
       </button>
+      <button class="spotlight-card-btn" onclick="pycmd('spotlight:open_folder')" title="Ouvrir le dossier des photos favorites pour ajouter les votres">
+        <span>Dossier favoris</span>
+      </button>
+      <button class="spotlight-card-btn" onclick="pycmd('spotlight:toggle_enabled')" title="Desactiver l'arriere-plan Spotlight">
+        <span>Desactiver</span>
+      </button>
     </div>
   </div>
 </div>
@@ -601,6 +759,15 @@ body.nightMode .spotlight-card-btn:hover {{
             return (True, None)
         elif cmd == "info":
             self.show_current_info()
+            return (True, None)
+        elif cmd == "open_folder":
+            self.on_open_favorites_folder()
+            return (True, None)
+        elif cmd == "add_photos":
+            self.on_add_photos()
+            return (True, None)
+        elif cmd == "toggle_enabled":
+            self.on_toggle_enabled()
             return (True, None)
 
         return handled
