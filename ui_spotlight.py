@@ -339,9 +339,6 @@ body.nightMode .spotlight-card-btn:hover {{
       L'arriere-plan Spotlight est desactive.
     </div>
     <div class="spotlight-card-actions">
-      <button class="spotlight-card-btn" onclick="pycmd('spotlight:open_folder')" title="Ouvrir le dossier des photos favorites pour gerer vos photos">
-        <span>Dossier favoris</span>
-      </button>
       <button class="spotlight-card-btn" onclick="pycmd('spotlight:toggle_enabled')" title="Reactiver l'arriere-plan Spotlight">
         <span>Activer</span>
       </button>
@@ -727,9 +724,6 @@ body.nightMode .spotlight-card-btn:hover {{
       <button class="spotlight-card-btn" onclick="pycmd('spotlight:next')" title="Photo suivante (Ctrl+;)">
         <span>Suivante</span>
         <span class="spotlight-shortcut-badge">Ctrl+;</span>
-      </button>
-      <button class="spotlight-card-btn" onclick="pycmd('spotlight:open_folder')" title="Ouvrir le dossier des photos favorites pour ajouter les votres">
-        <span>Dossier favoris</span>
       </button>
       <button class="spotlight-card-btn" onclick="pycmd('spotlight:toggle_enabled')" title="Desactiver l'arriere-plan Spotlight">
         <span>Desactiver</span>
